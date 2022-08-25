@@ -21,6 +21,11 @@ import "../proxy/utils/Initializable.sol";
 abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
     address private _owner;
 
+    /**
+     * @notice Pending owner of this contract
+     */
+    address private pendingOwner;
+
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
@@ -57,26 +62,6 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
     }
 
     /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        _transferOwnership(address(0));
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _transferOwnership(newOwner);
-    }
-
-    /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Internal function without access restriction.
      */
@@ -87,9 +72,65 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
     }
 
     /**
+     * @notice Emitted when pendingOwner is changed
+     */
+    event NewPendingOwner(address oldPendingOwner, address newPendingOwner);
+
+    /**
+     * @notice Emitted when pendingOwner is accepted, which means owner is updated
+     */
+    event NewOwner(address oldOwner, address newOwner);
+
+    /**
+     * @notice Begins transfer of owner rights. The newPendingOwner must call `_acceptOwner` to finalize the transfer.
+     * @dev Owner function to begin change of owner. The newPendingOwner must call `_acceptOwner` to finalize the transfer.
+     * @param newPendingOwner New pending owner.
+     */
+    function _setPendingOwner(address newPendingOwner) public onlyOwner {
+        // Save current value, if any, for inclusion in log
+        address oldPendingOwner = pendingOwner;
+
+        // Store pendingOwner with value newPendingOwner
+        pendingOwner = newPendingOwner;
+
+        // Emit NewPendingOwner(oldPendingOwner, newPendingOwner)
+        emit NewPendingOwner(oldPendingOwner, newPendingOwner);
+    }
+
+    /**
+     * @notice Accepts transfer of owner rights. msg.sender must be pendingOwner
+     * @dev Owner function for pending owner to accept role and update owner
+     */
+    function _acceptOwner() public {
+        // Check caller is pendingOwner and pendingOwner ≠ address(0)
+        require(msg.sender == pendingOwner, "not the pending owner");
+
+        // Save current values for inclusion in log
+        address oldOwner = owner();
+        address oldPendingOwner = pendingOwner;
+
+        // Store owner with value pendingOwner
+        _transferOwnership(pendingOwner);
+
+        // Clear the pending value
+        pendingOwner = address(0);
+
+        emit NewOwner(oldOwner, pendingOwner);
+        emit NewPendingOwner(oldPendingOwner, pendingOwner);
+    }
+
+    function renounceOwnership() public onlyOwner {
+        revert("not used anymore");
+    }
+
+    function transferOwnership(address newOwner) public onlyOwner {
+        revert("not used anymore");
+    }
+    
+    /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }
